@@ -49,6 +49,8 @@ export function AIChatPanel() {
   if (!isOpen) {
     return (
       <button
+        type="button"
+        aria-label="Open AI Chat Panel"
         onClick={() => setIsOpen(true)}
         className="fixed right-0 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground p-2 rounded-l-lg shadow-lg hover:bg-primary/90 transition-colors"
       >

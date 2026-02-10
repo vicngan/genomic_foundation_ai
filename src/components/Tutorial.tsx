@@ -115,7 +115,9 @@ export function TutorialDialog({ open, onOpenChange }: TutorialDialogProps) {
           {tutorialSteps.map((_, index) => (
             <button
               key={index}
+              type="button"
               onClick={() => setCurrentStep(index)}
+              aria-label={`Go to step ${index + 1}`}
               className={cn(
                 "h-2 rounded-full transition-all",
                 index === currentStep

@@ -14,5 +14,6 @@
         "allowJs": true,
         "noUnusedLocals": false,
         "strict": true,
+        "forceConsistentCasingInFileNames": true
     }
 }
