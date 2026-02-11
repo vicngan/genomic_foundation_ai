@@ -8,10 +8,8 @@
         "paths": {
             "@/*": ["src/*"]
         },
-        "noUnusedParameters": false,
         "skipLibCheck": true,
         "allowJs": true,
-        "noUnusedLocals": false,
         "strict": true,
         "forceConsistentCasingInFileNames": true
     }
