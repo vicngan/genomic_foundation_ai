@@ -12,17 +12,27 @@ Based on the integrated tutorial, the platform includes:
 -   **Research Notebook**: A rich-text notebook to document research, embed result snapshots, and track version history for reproducibility.
 -   **AI Assistant**: An integrated chat interface to help explain results, compare analyses, and answer questions about your genomic research.
 
+## 🏛️ Architecture
+
+This application uses a client-server architecture:
+
+-   **Frontend**: A modern React single-page application (SPA) that provides the user interface.
+-   **Backend**: A Python server built with FastAPI that hosts the Parlant AI agent and exposes a REST API for the frontend to consume.
+
 ## 🛠️ Tech Stack
 
 This project is built with a modern, robust technology stack:
 
--   **Frontend Framework**: [React](https://reactjs.org/)
--   **Language**: [TypeScript](https://www.typescriptlang.org/)
--   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
--   **UI Components**: Custom components, likely using a library like [shadcn/ui](https://ui.shadcn.com/).
--   **Data Fetching & State Management**: [TanStack Query (React Query)](https://tanstack.com/query/latest)
--   **Routing**: [React Router](https://reactrouter.com/)
--   **Icons**: [Lucide React](https://lucide.dev/)
+-   **Frontend**:
+    -   **Framework**: [React](https://reactjs.org/)
+    -   **Language**: [TypeScript](https://www.typescriptlang.org/)
+    -   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+    -   **UI Components**: Custom components, likely using a library like [shadcn/ui](https://ui.shadcn.com/).
+    -   **Routing**: [React Router](https://reactrouter.com/)
+-   **Backend**:
+    -   **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
+    -   **Language**: [Python](https://www.python.org/)
+    -   **AI SDK**: [Parlant](https://www.parlant.io/docs/quickstart/installation/) 
 
 ## 🚀 Getting Started
 
@@ -34,8 +44,9 @@ Make sure you have the following installed on your machine:
 
 -   [Node.js](https://nodejs.org/) (v18 or newer recommended)
 -   [npm](https://www.npmjs.com/), [yarn](https://yarnpkg.com/), or [pnpm](https://pnpm.io/)
+-   [Python](https://www.python.org/downloads/) (v3.8 or newer recommended) & `pip`
 
-### Installation
+### Installation & Setup
 
 1.  **Clone the repository:**
     ```sh
@@ -43,50 +54,72 @@ Make sure you have the following installed on your machine:
     cd genomic_model_ai
     ```
 
-2.  **Install dependencies:**
+2.  **Set up the Backend:**
+    Navigate to the backend directory, create a virtual environment, and install dependencies.
     ```sh
+    cd backend
+    python -m venv venv
+    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+    pip install -r requirements.txt
+    ```
+
+3.  **Set up the Frontend:**
+    From the root directory, install the Node.js dependencies.
+    ```sh
+    # In the root 'genomic_model_ai' directory
     npm install
     # or
     yarn install
-    # or
-    pnpm install
     ```
-
-3.  **Set up environment variables:**
-
-    The application requires an API key to communicate with the AI model. Create a `.env.local` file in the root of the project and add your key:
-
-    ```env
-    # For Create React App or similar setups
-    REACT_APP_AI_API_KEY="your_api_key_here"
-
-    # For Vite
-    VITE_AI_API_KEY="your_api_key_here"
-    ```
-    *Note: The variable name (`REACT_APP_` or `VITE_`) depends on your build tool. Update the code in `src/components/Chatbox.tsx` to use the correct environment variable.*
 
 ### Running the Application
 
-Start the development server:
+You will need to run both the backend and frontend servers in separate terminal windows.
 
-```sh
-npm run dev
-# or
-npm start
-```
+1.  **Start the Backend Server:**
+    From the `backend` directory (with the virtual environment activated):
+    ```sh
+    uvicorn main:app --reload
+    ```
+    The backend API will be running at `http://localhost:8000`.
 
-Open your browser and navigate to `http://localhost:5173` (for Vite) or `http://localhost:3000` (for Create React App).
+2.  **Start the Frontend Server:**
+    From the root project directory:
+    ```sh
+    npm run dev
+    # or
+    npm start
+    ```
+    The frontend will be running at `http://localhost:5173` (for Vite) or `http://localhost:3000` (for Create React App).
+
+## ⚠️ Troubleshooting
+
+### Build fails for `pydantic-core` on macOS
+
+If you see an error like `Failed to build installable wheels for... pydantic-core` during the `pip install` step, it means your system is missing the Rust compiler toolchain needed to build this dependency from source.
+
+**Solution:** Install Rust using `rustup`.
+
+1.  Run the official installer:
+    ```sh
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    ```
+
+2.  Follow the on-screen instructions (the default option is fine).
+
+3.  Restart your terminal or source the cargo environment: `source "$HOME/.cargo/env"`
+
+4.  Activate your virtual environment (`source backend/venv/bin/activate`) and re-run `pip install -r requirements.txt`.
+
 
 ## 📁 Project Structure
 
-The `src` folder contains the core application code:
-
--   `components/`: Reusable React components (`Chatbox.tsx`, `Tutorial.tsx`, etc.).
--   `components/UI/`: Generic UI components like `Button`, `Dialog`, etc.
--   `lib/`: Utility functions, such as `cn` for merging class names.
--   `pages/` or `routes/`: (Likely) Components that represent full pages/routes.
--   `app.tsx`: The main application component that sets up routing and providers.
--   `main.tsx`: The entry point of the application.
+-   `src/`: Contains the frontend React application code.
+    -   `components/`: Reusable React components (`Chatbox.tsx`, etc.).
+    -   `App.tsx`: The main application component.
+-   `backend/`: Contains the backend Python/FastAPI application.
+    -   `main.py`: The main API server file.
+    -   `requirements.txt`: Python package dependencies.
 
 ## 🤝 Contributing
 
