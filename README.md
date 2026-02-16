@@ -73,6 +73,32 @@ Make sure you have the following installed on your machine:
     yarn install
     ```
 
+4.  **Set up Parlant (Emcie) for the AI Assistant:**
+    Parlant requires Python 3.10+ and installs via pip.
+    ```sh
+    pip install parlant
+    ```
+    Start the Parlant server in a dedicated folder (it uses the working directory for runtime data).
+    ```sh
+    mkdir -p parlant-server
+    cd parlant-server
+    parlant-server run
+    ```
+    In a new terminal, create an agent and copy its ID.
+    ```sh
+    parlant agent create --name "GFM Assistant"
+    ```
+    Set your Emcie API key (Emcie is the default NLP service for Parlant).
+    ```sh
+    export EMCIE_API_KEY="<YOUR_API_KEY>"
+    ```
+    Then set the frontend env vars (see `.env.example`):
+    ```sh
+    VITE_PARLANT_SERVER=http://localhost:8800
+    VITE_PARLANT_AGENT_ID=<paste-agent-id>
+    ```
+    The chat UI is provided by the official React widget `parlant-chat-react`.
+
 ### Running the Application
 
 You will need to run both the backend and frontend servers in separate terminal windows.
