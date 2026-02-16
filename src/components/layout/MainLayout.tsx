@@ -5,7 +5,7 @@ import { AIChatPanel } from "./AIChatPanel";
 
 export function MainLayout() {
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-screen flex flex-col bg-background/90 overflow-hidden">
       <TopBar />
       <div className="flex flex-1 min-h-0">
         <Sidebar />

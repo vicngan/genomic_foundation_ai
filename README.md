@@ -62,6 +62,7 @@ Make sure you have the following installed on your machine:
     source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
     pip install -r requirements.txt
     ```
+    This backend is a minimal FastAPI stub (`backend/main.py`) with `/health` and `/chat` endpoints.
 
 3.  **Set up the Frontend:**
     From the root directory, install the Node.js dependencies.
@@ -87,29 +88,9 @@ You will need to run both the backend and frontend servers in separate terminal 
     From the root project directory:
     ```sh
     npm run dev
-    # or
-    npm start
     ```
     The frontend will be running at `http://localhost:5173` (for Vite) or `http://localhost:3000` (for Create React App).
 
-## ⚠️ Troubleshooting
-
-### Build fails for `pydantic-core` on macOS
-
-If you see an error like `Failed to build installable wheels for... pydantic-core` during the `pip install` step, it means your system is missing the Rust compiler toolchain needed to build this dependency from source.
-
-**Solution:** Install Rust using `rustup`.
-
-1.  Run the official installer:
-    ```sh
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-    ```
-
-2.  Follow the on-screen instructions (the default option is fine).
-
-3.  Restart your terminal or source the cargo environment: `source "$HOME/.cargo/env"`
-
-4.  Activate your virtual environment (`source backend/venv/bin/activate`) and re-run `pip install -r requirements.txt`.
 
 
 ## 📁 Project Structure
@@ -118,7 +99,7 @@ If you see an error like `Failed to build installable wheels for... pydantic-cor
     -   `components/`: Reusable React components (`Chatbox.tsx`, etc.).
     -   `App.tsx`: The main application component.
 -   `backend/`: Contains the backend Python/FastAPI application.
-    -   `main.py`: The main API server file.
+    -   `main.py`: The main API server file (minimal stub with `/health` and `/chat`).
     -   `requirements.txt`: Python package dependencies.
 
 ## 🤝 Contributing
