@@ -1,20 +1,105 @@
-import { useMemo, useState } from "react";
-import { Bot, ChevronRight, X } from "lucide-react";
-import ParlantChatbox from "parlant-chat-react";
+import { useState, useRef, useEffect } from "react";
+import { Bot, ChevronRight, X, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/UI/button";
-import { Badge } from "@/components/UI/badge";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/UI/input";
 
-const defaultServer = "http://localhost:8800";
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
+
+const API_BASE_URL = (import.meta.env as { VITE_API_BASE_URL?: string }).VITE_API_BASE_URL || "http://localhost:8000";
 
 export function AIChatPanel() {
   const [isOpen, setIsOpen] = useState(true);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "1",
+      role: "assistant",
+      content: "Hello! I'm the GFM Assistant powered by Qwen3 via vLLM. How can I help you with your research today?",
+      timestamp: new Date(),
+    },
+  ]);
+  const [inputValue, setInputValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const config = useMemo(() => {
-    const server = (import.meta.env.VITE_PARLANT_SERVER as string | undefined) || defaultServer;
-    const agentId = (import.meta.env.VITE_PARLANT_AGENT_ID as string | undefined) || "";
-    return { server, agentId };
-  }, []);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!inputValue.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: inputValue,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue("");
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Convert messages to API format
+      const apiMessages = [...messages, userMessage].map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+      const response = await fetch(`${API_BASE_URL}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.reply,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to get response from AI";
+      setError(errorMessage);
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `Error: ${errorMessage}`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   if (!isOpen) {
     return (
@@ -29,8 +114,6 @@ export function AIChatPanel() {
     );
   }
 
-  const hasConfig = Boolean(config.agentId);
-
   return (
     <aside className="w-96 border-l border-border bg-card/90 backdrop-blur flex flex-col h-full">
       <div className="p-4 border-b border-border flex items-center justify-between">
@@ -40,7 +123,7 @@ export function AIChatPanel() {
           </div>
           <div>
             <h3 className="font-semibold text-sm">GFM Assistant</h3>
-            <p className="text-xs text-muted-foreground">Powered by Parlant + Emcie</p>
+            <p className="text-xs text-muted-foreground">Powered by Qwen3 + vLLM</p>
           </div>
         </div>
         <Button
@@ -53,27 +136,86 @@ export function AIChatPanel() {
         </Button>
       </div>
 
-      <div className="flex-1 min-h-0 p-3">
-        {hasConfig ? (
-          <div className={cn("h-full w-full rounded-xl border border-border bg-background/70")}> 
-            <ParlantChatbox server={config.server} agentId={config.agentId} />
-          </div>
-        ) : (
-          <div className="h-full w-full rounded-xl border border-dashed border-border bg-background/70 p-4 text-sm text-muted-foreground flex flex-col gap-3">
-            <Badge variant="secondary" className="w-fit">Setup required</Badge>
-            <p>
-              Add <span className="font-mono">VITE_PARLANT_AGENT_ID</span> and <span className="font-mono">VITE_PARLANT_SERVER</span> to your
-              <span className="font-mono">.env</span> (example in <span className="font-mono">.env.example</span>), then restart the dev server.
-            </p>
-            <div className="rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
-              <div className="font-semibold text-foreground">Quick setup</div>
-              <div>1. <span className="font-mono">pip install parlant</span></div>
-              <div>2. <span className="font-mono">export EMCIE_API_KEY=... </span></div>
-              <div>3. <span className="font-mono">parlant-server run</span></div>
-              <div>4. <span className="font-mono">parlant agent create --name "GFM Assistant"</span></div>
+      <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex gap-3 ${
+                message.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              {message.role === "assistant" && (
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Bot className="h-4 w-4 text-primary" />
+                </div>
+              )}
+              <div
+                className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : message.content.startsWith("Error:")
+                    ? "bg-destructive/10 text-destructive border border-destructive/20"
+                    : "bg-muted text-foreground"
+                }`}
+              >
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <p className="text-xs opacity-70 mt-1">
+                  {message.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+              {message.role === "user" && (
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-semibold text-primary">U</span>
+                </div>
+              )}
             </div>
+          ))}
+          {isLoading && (
+            <div className="flex gap-3 justify-start">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Bot className="h-4 w-4 text-primary" />
+              </div>
+              <div className="bg-muted text-foreground rounded-lg px-4 py-2 flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Thinking...</span>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="p-4 border-t border-border">
+          {error && (
+            <div className="mb-2 p-2 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive">
+              {error}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type a message..."
+              className="flex-1"
+              disabled={isLoading}
+            />
+            <Button
+              onClick={handleSend}
+              size="icon"
+              disabled={!inputValue.trim() || isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
           </div>
-        )}
+        </div>
       </div>
     </aside>
   );
