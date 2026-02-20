@@ -18,7 +18,7 @@ export function AIChatPanel() {
     {
       id: "1",
       role: "assistant",
-      content: "Hello! I'm the GFM Assistant powered by Qwen3 via vLLM. How can I help you with your research today?",
+      content: "Hello! I'm your Genomic Foundation Model Assistant powered by Qwen3 via vLLM. How can I help you with your research today?",
       timestamp: new Date(),
     },
   ]);

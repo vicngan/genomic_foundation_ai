@@ -1,7 +1,3 @@
-"""
-Prompt templates for genomic foundation model queries.
-"""
-
 from typing import List, Optional, Dict, Any
 
 try:

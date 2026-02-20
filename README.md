@@ -18,7 +18,7 @@ This application uses a client-server architecture:
 
 -   **Frontend**: A modern React single-page application (SPA) that provides the user interface.
 -   **Backend**: A Python server built with FastAPI that integrates with vLLM (or other OpenAI-compatible APIs) to provide AI-powered chat assistance with genomic domain knowledge.
--   **AI Layer**: vLLM server running Qwen3 model (or compatible LLM) that processes chat requests with specialized genomic system prompts.
+-   **AI Layer**: vLLM server running Qwen3 model that processes chat requests with specialized genomic system prompts.
 
 ## 🛠️ Tech Stack
 
