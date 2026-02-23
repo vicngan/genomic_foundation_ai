@@ -10,7 +10,49 @@ interface Message {
   timestamp: Date;
 }
 
-const API_BASE_URL = (import.meta.env as { VITE_API_BASE_URL?: string }).VITE_API_BASE_URL || "http://localhost:8000";
+interface QueuedRequest {
+  userMessageId: string;
+  content: string;
+}
+
+const API_BASE_URL =
+  (import.meta.env as { VITE_API_BASE_URL?: string }).VITE_API_BASE_URL ||
+  "http://localhost:8000";
+
+const TRAINING_PROMPT_SUGGESTIONS = [
+  "What do High, Moderate, and Low confidence mean?",
+  "What does modelVersion and datasetVersion mean in results?",
+  "What is a jobId and how do I use it?",
+  "Walk me through how to get predictions for a genomic region.",
+];
+
+function createId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function buildApiMessagesUntilTarget(messages: Message[], targetUserMessageId: string) {
+  const targetIndex = messages.findIndex((msg) => msg.id === targetUserMessageId);
+  const scopedMessages = targetIndex >= 0 ? messages.slice(0, targetIndex + 1) : messages;
+
+  // Keep prior chat context, but avoid feeding UI error text back into the model.
+  return scopedMessages
+    .filter((msg) => !(msg.role === "assistant" && msg.content.startsWith("Error:")))
+    .map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+}
+
+function insertAssistantAfterUser(
+  messages: Message[],
+  userMessageId: string,
+  assistantMessage: Message,
+) {
+  const userIndex = messages.findIndex((msg) => msg.id === userMessageId);
+  if (userIndex === -1) return [...messages, assistantMessage];
+
+  return [...messages.slice(0, userIndex + 1), assistantMessage, ...messages.slice(userIndex + 1)];
+}
 
 export function AIChatPanel() {
   const [isOpen, setIsOpen] = useState(true);
@@ -18,14 +60,22 @@ export function AIChatPanel() {
     {
       id: "1",
       role: "assistant",
-      content: "Hello! I'm your Genomic Foundation Model Assistant powered by Qwen3 via vLLM. How can I help you with your research today?",
+      content:
+        "Hello! I'm your Genomic Foundation Model Assistant powered by Qwen3 via vLLM. How can I help you with your research today?",
       timestamp: new Date(),
     },
   ]);
   const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [requestQueue, setRequestQueue] = useState<QueuedRequest[]>([]);
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<Message[]>(messages);
+  const isLoading = activeRequestId !== null;
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -35,27 +85,14 @@ export function AIChatPanel() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!inputValue.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: inputValue,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
-    setIsLoading(true);
+  const processQueuedRequest = async (queuedRequest: QueuedRequest) => {
     setError(null);
 
     try {
-      // Convert messages to API format
-      const apiMessages = [...messages, userMessage].map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
+      const apiMessages = buildApiMessagesUntilTarget(
+        messagesRef.current,
+        queuedRequest.userMessageId,
+      );
 
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: "POST",
@@ -72,34 +109,85 @@ export function AIChatPanel() {
 
       const data = await response.json();
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: createId(),
         role: "assistant",
         content: data.reply,
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) =>
+        insertAssistantAfterUser(prev, queuedRequest.userMessageId, assistantMessage),
+      );
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to get response from AI";
       setError(errorMessage);
-      const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
+
+      const errorMessageBubble: Message = {
+        id: createId(),
         role: "assistant",
         content: `Error: ${errorMessage}`,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, errorMsg]);
+
+      setMessages((prev) =>
+        insertAssistantAfterUser(prev, queuedRequest.userMessageId, errorMessageBubble),
+      );
     } finally {
-      setIsLoading(false);
+      setActiveRequestId(null);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (activeRequestId || requestQueue.length === 0) return;
+
+    const nextRequest = requestQueue[0];
+    setActiveRequestId(nextRequest.userMessageId);
+    setRequestQueue((prev) => prev.slice(1));
+    void processQueuedRequest(nextRequest);
+  }, [activeRequestId, requestQueue]);
+
+  const enqueueUserMessage = (content: string) => {
+    const userMessageId = createId();
+    const userMessage: Message = {
+      id: userMessageId,
+      role: "user",
+      content,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setRequestQueue((prev) => [
+      ...prev,
+      {
+        userMessageId,
+        content,
+      },
+    ]);
+  };
+
+  const handleSend = () => {
+    const trimmedInput = inputValue.trim();
+    if (!trimmedInput) return;
+
+    enqueueUserMessage(trimmedInput);
+    setInputValue("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   };
+
+  const queueSummary =
+    requestQueue.length === 0
+      ? isLoading
+        ? "Processing request..."
+        : "Idle"
+      : isLoading
+      ? `Processing 1, queued ${requestQueue.length}`
+      : `Queued ${requestQueue.length}`;
 
   if (!isOpen) {
     return (
@@ -134,6 +222,15 @@ export function AIChatPanel() {
         >
           <X className="h-4 w-4" />
         </Button>
+      </div>
+
+      <div className="px-4 py-2 border-b border-border bg-muted/30">
+        <p className="text-xs text-muted-foreground">LLM Queue: {queueSummary}</p>
+        {requestQueue.length > 0 && (
+          <p className="text-xs text-muted-foreground truncate mt-1">
+            Next: {requestQueue[0].content}
+          </p>
+        )}
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col">
@@ -194,25 +291,29 @@ export function AIChatPanel() {
               {error}
             </div>
           )}
+          <div className="mb-2 flex flex-wrap gap-2">
+            {TRAINING_PROMPT_SUGGESTIONS.map((suggestion) => (
+              <Button
+                key={suggestion}
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => enqueueUserMessage(suggestion)}
+              >
+                {suggestion}
+              </Button>
+            ))}
+          </div>
           <div className="flex gap-2">
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type a message..."
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message to send or queue..."
               className="flex-1"
-              disabled={isLoading}
             />
-            <Button
-              onClick={handleSend}
-              size="icon"
-              disabled={!inputValue.trim() || isLoading}
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
+            <Button onClick={handleSend} size="icon" disabled={!inputValue.trim()}>
+              <Send className="h-4 w-4" />
             </Button>
           </div>
         </div>
