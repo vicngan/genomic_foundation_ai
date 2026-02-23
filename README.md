@@ -10,7 +10,9 @@ The platform includes:
 -   **New Analysis Runs**: Submit DNA sequences, FASTA files, or genomic regions for AI-powered predictions.
 -   **Detailed Results**: View prediction scores, confidence assessments, and evidence panels with links to external databases like UCSC and Ensembl.
 -   **Research Notebook**: A rich-text notebook to document research, embed result snapshots, and track version history for reproducibility.
--   **AI Assistant**: An integrated chat interface powered by Qwen3 (via vLLM) that helps explain results, compare analyses, answer questions about genomic research, and guide users through the prediction system. The AI is trained to reference only backend capabilities and prediction outputs.
+-   **AI Assistant**: An integrated chat interface powered by Qwen3 (via vLLM) that helps explain results, compare analyses, and guide users through the prediction system using backend-only capabilities.
+-   **LLM Request Queue**: The chat panel supports queued prompts. You can submit multiple messages while a response is running, and requests are processed in order.
+-   **Training Prompt Shortcuts**: The chat panel includes one-click starter prompts based on current training examples (confidence, versions, job tracking, and workflow guidance).
 
 ## 🏛️ Architecture
 
@@ -132,6 +134,16 @@ You will need to run three services: the LLM server (vLLM), the backend, and the
 4.  **Access the Application:**
     Open `http://localhost:5173` in your browser. The AI chat assistant will be available in the chat panel.
 
+### Using the AI Chat Queue
+
+In the chat panel (`src/components/layout/AIChatPanel.tsx`):
+
+- Submit a message with Enter or the send button.
+- While the model is still responding, submit more messages and they will be queued.
+- Requests are processed sequentially and each AI reply is inserted after the matching user message.
+- Use the built-in training prompt shortcut buttons for common tasks.
+- Queue status is shown inline (`Idle`, `Processing`, `Queued N`).
+
 **Note:** For detailed AI integration instructions, troubleshooting, and alternative LLM setups, see [docs/AI_CHAT_INTEGRATION.md](docs/AI_CHAT_INTEGRATION.md).
 
 
@@ -199,6 +211,7 @@ The AI assistant is configured to:
 - Interpret scores, confidence levels, and classifications
 - Compare results from different modalities
 - Provide system-specific guidance
+- Process queued chat prompts sequentially in the frontend panel
 
 ## 🤝 Contributing
 
